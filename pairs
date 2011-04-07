@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+
+require 'yaml'
+
+instructions =  <<-INSTRUCTIONS
+
+Available commands:
+
+  pairs help
+    - show commands and .pairs file syntax
+
+  pairs list
+    - gives a list of names and initials from a .pairs file
+
+  pairs make [sm tp ...]
+    - creates a random pairing based on a .pairs file
+    - if initials are provided, only uses those people
+
+INSTRUCTIONS
+
+pairs_file_syntax_help = <<-NO_PAIRS_FILE
+
+Create a YAML file in your project or home directory.
+
+Format: <initials>: <name>[; <email>]
+
+Example:
+
+# .pairs
+# place in project or home directory
+pairs:
+  eh: Edward Hieatt
+  js: Josh Susser; jsusser
+  sf: Serguei Filimonov; serguei
+email:
+  prefix: pair
+  domain: pivotallabs.com
+
+NO_PAIRS_FILE
+
+def get_pairs_config
+  pairs_file_path = nil
+  candidate_file_path = '.pairs'
+  until pairs_file_path || File.expand_path(candidate_file_path) == '/.pairs' do
+    if File.exists?(candidate_file_path)
+      pairs_file_path = candidate_file_path
+    else
+      candidate_file_path = File.join("..", candidate_file_path)
+    end
+  end
+  unless pairs_file_path
+    puts "Could not find a .pairs file."
+    puts pairs_file_syntax_help
+    exit(1)
+  end
+  pairs_file_path ? YAML.load_file(pairs_file_path) : {}
+end
+
+unless ARGV.length > 0
+  puts instructions
+  exit(1)
+end
+
+config  = get_pairs_config
+command = ARGV.shift.downcase
+
+case command
+when "help"
+
+  puts instructions
+  puts pairs_file_syntax_help
+
+when "list"
+
+  people = config["pairs"]
+  puts "\n  Available initials:"
+  people.map { |k,v| puts "    #{k}: #{v.split(";").first}" }
+  puts
+
+when "make"
+
+  people = config["pairs"]
+  people = people.select{ |p| ARGV.include?(p) } if ARGV.any?
+  people = people.values.map { |p| p.split(";").first }.uniq
+
+  pairs = []
+
+  while people.any? do
+    pair = []
+    pair << people.delete_at(rand(people.size))
+    pair << people.delete_at(rand(people.size))
+    pairs << pair.compact
+  end
+
+  puts
+  pairs.each { |pair| pair.each { |p| puts "  #{p}" }; puts }
+
+else
+
+  puts "Unknown command: #{command}"
+  puts instructions
+  exit(1)
+
+end
+
