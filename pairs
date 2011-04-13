@@ -79,16 +79,31 @@ when "list"
 
 when "make"
 
-  people = config["pairs"]
-  people = people.select{ |p| ARGV.include?(p) } if ARGV.any?
-  people = people.values.map { |p| p.split(";").first }.uniq
+  if ARGV.any?
+    people = ARGV.map do |initials|
+      if full_name = config['pairs'][initials.downcase]
+        full_name
+      else
+        puts "Couldn't find author name for initials: #{initials}. Add this person to the .pairs file in your project or home directory."
+        exit 1
+      end
+    end
+  else
+    people = config['pairs'].map do |initials, name|
+      name
+    end
+  end
+
+  names = []
+  people.each { |p| names << p.split(";").first }
+  names.uniq!
 
   pairs = []
 
-  while people.any? do
+  while names.any? do
     pair = []
-    pair << people.delete_at(rand(people.size))
-    pair << people.delete_at(rand(people.size))
+    pair << names.delete_at(rand(names.size))
+    pair << names.delete_at(rand(names.size))
     pairs << pair.compact
   end
 
